@@ -1,3 +1,4 @@
+use log::LevelFilter;
 use rocket::{
     fairing::{self, Fairing, Info},
     http::Status,
@@ -6,17 +7,11 @@ use rocket::{
     try_outcome, Request, Rocket, State,
 };
 use sqlx::{
-    pool::PoolConnection,
     postgres::{PgConnectOptions, PgPool, PgPoolOptions},
     ConnectOptions,
 };
-use log::LevelFilter;
 
 use std::borrow::Cow;
-
-pub use anyhow::Error;
-/// An anyhow::Result with default return type of ()
-pub type Result<T = ()> = std::result::Result<T, Error>;
 
 #[derive(Debug, Clone)]
 pub struct SqlxPostgresConfig {
@@ -57,11 +52,7 @@ pub struct SQLxPostgresPoller {
 
 impl SQLxPostgresPoller {
     pub fn new(client: PgPool) -> Self {
-        Self { client,}
-    }
-
-    async fn connection(&self) -> sqlx::Result<PoolConnection<sqlx::Postgres>> {
-        self.client.acquire().await
+        Self { client }
     }
 }
 
@@ -85,6 +76,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for SQLxPostgres {
 /// Fairing struct
 #[derive(Default)]
 pub struct SqlxPostgresFairing {
+    poll: Option<PgPool>,
     config: SqlxPostgresConfig,
 }
 
@@ -93,7 +85,7 @@ impl SqlxPostgresFairing {
         Self::default()
     }
 
-    /// Set session database pools max connections limit.
+    /// Set database pools max connections limit.
     ///
     /// Call on the fairing before passing it to `rocket.attach()`
     pub fn set_max_connections(mut self, max: u32) -> Self {
@@ -102,7 +94,7 @@ impl SqlxPostgresFairing {
         self
     }
 
-    /// Set session database name
+    /// Set database name
     ///
     /// Call on the fairing before passing it to `rocket.attach()`
     pub fn with_database(mut self, database: impl Into<Cow<'static, str>>) -> Self {
@@ -110,7 +102,7 @@ impl SqlxPostgresFairing {
         self
     }
 
-    /// Set session username
+    /// Set username
     ///
     /// Call on the fairing before passing it to `rocket.attach()`
     pub fn with_username(mut self, username: impl Into<Cow<'static, str>>) -> Self {
@@ -118,7 +110,7 @@ impl SqlxPostgresFairing {
         self
     }
 
-    /// Set session user password
+    /// Set user password
     ///
     /// Call on the fairing before passing it to `rocket.attach()`
     pub fn with_password(mut self, password: impl Into<Cow<'static, str>>) -> Self {
@@ -126,7 +118,7 @@ impl SqlxPostgresFairing {
         self
     }
 
-    /// Set session database hostname
+    /// Set database hostname
     ///
     /// Call on the fairing before passing it to `rocket.attach()`
     pub fn with_host(mut self, host: impl Into<Cow<'static, str>>) -> Self {
@@ -134,7 +126,7 @@ impl SqlxPostgresFairing {
         self
     }
 
-    /// Set session database port
+    /// Set database port
     ///
     /// Call on the fairing before passing it to `rocket.attach()`
     pub fn with_port(mut self, port: u16) -> Self {
@@ -142,11 +134,19 @@ impl SqlxPostgresFairing {
         self
     }
 
-    /// Set session database logging level
+    /// Set database logging level
     ///
     /// Call on the fairing before passing it to `rocket.attach()`
     pub fn with_loglevel(mut self, level: LevelFilter) -> Self {
         self.config.log_level = level;
+        self
+    }
+
+    /// Set database Poll Directly used for sharing Poll.
+    ///
+    /// Call on the fairing before passing it to `rocket.attach()`
+    pub fn with_poll(mut self, poll: PgPool) -> Self {
+        self.poll = Some(poll);
         self
     }
 }
@@ -161,24 +161,28 @@ impl Fairing for SqlxPostgresFairing {
     }
 
     async fn on_attach(&self, rocket: Rocket) -> std::result::Result<Rocket, Rocket> {
-        let mut connect_opts = PgConnectOptions::new();
-        connect_opts.log_statements(self.config.log_level);
-        connect_opts = connect_opts.database(&self.config.database[..]);
-        connect_opts = connect_opts.username(&self.config.username[..]);
-        connect_opts = connect_opts.password(&self.config.password[..]);
-        connect_opts = connect_opts.host(&self.config.host[..]);
-        connect_opts = connect_opts.port(self.config.port);
+        let store = if let Some(poll) = &self.poll {
+            SQLxPostgresPoller::new(poll.clone())
+        } else {
+            let mut connect_opts = PgConnectOptions::new();
+            connect_opts.log_statements(self.config.log_level);
+            connect_opts = connect_opts.database(&self.config.database[..]);
+            connect_opts = connect_opts.username(&self.config.username[..]);
+            connect_opts = connect_opts.password(&self.config.password[..]);
+            connect_opts = connect_opts.host(&self.config.host[..]);
+            connect_opts = connect_opts.port(self.config.port);
 
-        let pg_pool = match PgPoolOptions::new()
-            .max_connections(self.config.max_connections)
-            .connect_with(connect_opts)
-            .await
-        {
-            Ok(n) => n,
-            Err(_) => return Ok(rocket),
+            let pg_pool = match PgPoolOptions::new()
+                .max_connections(self.config.max_connections)
+                .connect_with(connect_opts)
+                .await
+            {
+                Ok(n) => n,
+                Err(_) => return Ok(rocket),
+            };
+
+            SQLxPostgresPoller::new(pg_pool)
         };
-
-        let store = SQLxPostgresPoller::new(pg_pool);
 
         Ok(rocket.manage(store))
     }
