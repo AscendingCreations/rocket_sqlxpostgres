@@ -1,0 +1,19 @@
+[package]
+name = "rocket_sqlxpostgres"
+version = "0.1.0"
+authors = ["Andrew Wheeler <genusistimelord@gmail.com>"]
+description = "SQLx Postgres Poller for Rocket.rs."
+edition = "2018"
+license = "MIT"
+repository = "https://github.com/genusistimelord/rocket_sqlxpostgres"
+readme = "README.md"
+keywords = ["Rocket", "SQLx", "Direct Poller"]
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rocket = { git="https://github.com/SergioBenitez/Rocket.git", version = "0.5.0-dev"}
+sqlx = { git= "https://github.com/genusistimelord/sqlx.git", version = "0.4.2", features = ["runtime-tokio-rustls", "postgres", "chrono", "json"] }
+chrono = { version = "0.4.19", default-features = false, features = ["clock", "serde", "std"] }
+anyhow = "1.0.38"
+futures = "0.3.12"
+log = { version = "0.4.13", default-features = false }
