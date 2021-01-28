@@ -1,5 +1,5 @@
 # rocket_sqlxpostgres
-SQLx postgres poller for Rocket
+SQLx postgres pooler for Rocket
 
 ```rust
 #![feature(proc_macro_hygiene, decl_macro)]

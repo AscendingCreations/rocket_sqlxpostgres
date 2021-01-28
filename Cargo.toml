@@ -2,12 +2,12 @@
 name = "rocket_sqlxpostgres"
 version = "0.1.0"
 authors = ["Andrew Wheeler <genusistimelord@gmail.com>"]
-description = "SQLx Postgres Poller for Rocket.rs."
+description = "SQLx Postgres Pooler for Rocket.rs."
 edition = "2018"
 license = "MIT"
 repository = "https://github.com/genusistimelord/rocket_sqlxpostgres"
 readme = "README.md"
-keywords = ["Rocket", "SQLx", "Direct Poller"]
+keywords = ["Rocket", "SQLx", "Pool"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]

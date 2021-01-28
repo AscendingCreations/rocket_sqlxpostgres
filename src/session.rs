@@ -46,11 +46,11 @@ impl Default for SqlxPostgresConfig {
 }
 
 #[derive(Debug)]
-pub struct SQLxPostgresPoller {
+pub struct SQLxPostgresPool {
     pub client: PgPool,
 }
 
-impl SQLxPostgresPoller {
+impl SQLxPostgresPool {
     pub fn new(client: PgPool) -> Self {
         Self { client }
     }
@@ -66,7 +66,7 @@ impl<'a, 'r> FromRequest<'a, 'r> for SQLxPostgres {
     type Error = ();
 
     async fn from_request(request: &'a Request<'r>) -> Outcome<Self, (Status, Self::Error), ()> {
-        let store: State<SQLxPostgresPoller> = try_outcome!(request.guard().await);
+        let store: State<SQLxPostgresPool> = try_outcome!(request.guard().await);
         Outcome::Success(SQLxPostgres {
             poll: store.client.clone(),
         })
@@ -162,7 +162,7 @@ impl Fairing for SqlxPostgresFairing {
 
     async fn on_attach(&self, rocket: Rocket) -> std::result::Result<Rocket, Rocket> {
         let store = if let Some(poll) = &self.poll {
-            SQLxPostgresPoller::new(poll.clone())
+            SQLxPostgresPool::new(poll.clone())
         } else {
             let mut connect_opts = PgConnectOptions::new();
             connect_opts.log_statements(self.config.log_level);
@@ -181,7 +181,7 @@ impl Fairing for SqlxPostgresFairing {
                 Err(_) => return Ok(rocket),
             };
 
-            SQLxPostgresPoller::new(pg_pool)
+            SQLxPostgresPool::new(pg_pool)
         };
 
         Ok(rocket.manage(store))
