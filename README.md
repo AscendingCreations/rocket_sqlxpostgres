@@ -5,7 +5,7 @@ SQLx postgres pooler for Rocket
 #![feature(proc_macro_hygiene, decl_macro)]
 #[macro_use] extern crate rocket;
 
-use rocket_sqlxpostgres::{SqlxPostgresFairing, SQLxPostgres};
+use rocket_sqlxpostgres::{SqlxPostgresFairing, SqlxPostgresConfig, SQLxPostgres};
 use sqlx::pool::PoolConnection;
 
 fn main() {
