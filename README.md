@@ -16,7 +16,7 @@ fn main() {
             .with_host("localhost")
             .with_port("5432");
 
-    rocket::ignite()
+    rocket::build()
         .attach(SqlxPostgresFairing::new(config, None))
         .mount("/", routes![index])
         .launch();
