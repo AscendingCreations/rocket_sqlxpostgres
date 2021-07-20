@@ -1,2 +1,2 @@
 mod session;
-pub use session::{SQLxPostgres, SqlxPostgresFairing};
+pub use session::{SQLxPostgres, SqlxPostgresFairing, SqlxPostgresConfig};
