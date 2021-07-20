@@ -9,13 +9,15 @@ use rocket_sqlxpostgres::{SqlxPostgresFairing, SQLxPostgres};
 use sqlx::pool::PoolConnection;
 
 fn main() {
-    rocket::ignite()
-        .attach(SqlxPostgresFairing::new()
+    let config = SqlxPostgresConfig::default()
             .with_database("databasename")
             .with_username("username")
             .with_password("password")
             .with_host("localhost")
-            .with_port("5432"))
+            .with_port("5432");
+
+    rocket::ignite()
+        .attach(SqlxPostgresFairing::new(config, None))
         .mount("/", routes![index])
         .launch();
 }
